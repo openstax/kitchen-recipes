@@ -1,0 +1,75 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require 'bundler/inline'
+
+gemfile do
+  gem 'openstax_kitchen', ENV['USE_LOCAL_KITCHEN'] ? { path: '/code/kitchen' } : '2.0.0'
+  gem 'slop', '4.8.2'
+  gem 'byebug'
+end
+
+recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
+  include Kitchen::Directions
+
+  book = doc.book
+  # puts book.chapters.pages.first.title
+
+  book.search('cnx-pi').trash
+
+  BakePreface.v1(book: book)
+
+  book.chapters.each do |chapter|
+    BakeChapterGlossary.v1(chapter: chapter, metadata_source: book.metadata)
+    BakeChapterKeyEquations.v1(chapter: chapter, metadata_source: book.metadata)
+    # BakeChapterSummary.v1(chapter: chapter, metadata_source: book.metadata)
+  end
+
+  # BakeExercises.v1(book: book)
+  BakeChapterIntroductions.v1(book: book)
+  BakeChapterTitle.v1(book: book)
+
+  book.chapters.each do |chapter|
+    BakePageAbstracts.v1(chapter: chapter)
+
+    chapter.tables('$:not(.unnumbered)').each do |table|
+      BakeNumberedTable.v1(table: table,
+                           number: "#{chapter.count_in(:book)}.#{table.count_in(:chapter)}")
+    end
+
+    chapter.examples.each do |example|
+      BakeExample.v1(example: example,
+                     number: "#{chapter.count_in(:book)}.#{example.count_in(:chapter)}",
+                     title_tag: 'h3')
+    end
+
+    chapter.pages('$:not(.introduction)').each do |page|
+      page.search("div[data-type='description']").each(&:trash)
+      page.add_class('chapter-content-module')
+
+      title = page.search("div[data-type='document-title']").first
+      title.name = 'h2'
+      title.replace_children(with:
+        <<~HTML
+          <span class="os-number">#{chapter.count_in(:book)}.#{page.count_in(:chapter)}</span>
+          <span class="os-divider"> </span>
+          <span data-type="" itemprop="" class="os-text">#{title.text}</span>
+        HTML
+      )
+    end
+  end
+
+  BakeToc.v1(book: book)
+end
+
+opts = Slop.parse do |slop|
+  slop.string '--input', 'Assembled XHTML input file', required: true
+  slop.string '--output', 'Baked XHTML output file', required: true
+end
+
+puts Kitchen::Oven.bake(
+  input_file: opts[:input],
+  recipes: recipe,
+  output_file: opts[:output]
+)
