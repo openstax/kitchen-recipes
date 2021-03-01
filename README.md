@@ -47,11 +47,36 @@ There's a top-level `bake` Bash script that calls the right scripts in the `book
 
 This script can be used to build a book using legacy baking (e.g. `cnx-easybake`) given an old style CSS recipe file (an example of how to run this script with Docker can be found below).
 
-Within the devcontainer, provided that [the legacy recipes](https://github.com/openstax/cnx-recipes/tree/master/recipes/output) have been [properly mounted](https://github.com/openstax/recipes#using-legacy-recipes-within-the-recipes-devcontainer), this script can be called with `./bake_legacy -i {input-file} -r legacy_recipes/{book-name}.css -o {output-file}`.
+Within the devcontainer, provided that [the legacy recipes](https://github.com/openstax/cnx-recipes/tree/master/recipes/output) have been [properly mounted](#using-legacy-recipes-within-the-recipes-devcontainer), this script can be called with `./bake_legacy -i {input-file} -r legacy_recipes/{book-name}.css -o {output-file}`.
 
 ## The `bake_root` script
 
 This script can be used if you don't want to invoke `bake` (kitchen baking) or `bake_legacy` (`cnx-easybake` baking) directly, and instead want to use a single script that will adopt the appropriate process for the given book. When kitchen support is added for a book, this script should be updated accordingly (it will fallback to legacy baking for all unknown books). Also, this is the script that will be utilized by build pipelines (e.g. CORGI, web hosting, etc.), so it controls when a book is ready to switchover from legacy to kitchen baking in those environments.
+
+## The `shorten` script
+
+This script generates shortened content for a book. It calls the book-specific shorten script in `books/{book-name}/shorten` to generate a shortened version of the assembled file, then bakes this file with both legacy and kitchen, and normalizes both. Essentially, it bundles calls to four other scripts: the book-specific `shorten`, `bake_legacy`, the book-specific `bake`, and `normalize`. The output files are written to the `data/{book-name}/short/` directory.
+
+The call to `bake_legacy` within this script assumes the recipe for the book is present in the legacy_recipes folder.
+
+Call this script with `./shorten -b <bookname> -i <inputfile>`. Add `USE_LOCAL_KITCHEN=1` at the beginning to bake with the local version of kitchen.
+
+It is assumed that the given `<bookname>` will match both the folder name for the book in the `/books/` directory and the filename of the recipe in `/legacy_recipes/` (not including the `.css` extension).
+
+As with the main `bake` script, new books must be added to [the case statement](/shorten#L21), ex:
+
+```bash
+case "${book}" in
+  chemistry) dest="${DIR}/data/chemistry/short" && script="${DIR}/books/chemistry/shorten";;
+    ... [other cases]
+  {book-name}) dest="$DIR/data/{book-name}/short"  && script="${DIR}/books/{book-name}/shorten";;
+  *) echo "Unknown book '${book}'"; exit 1;;
+esac
+```
+
+### Book-specific `shorten` scripts
+
+Each book has its own directions to create a shortened version for development and testing purposes. This script is in `books/{book-name}/shorten`. It uses the kitchen framework and `Oven.bake` to remove parts of the book and generate output, but it does not yield a baked book.
 
 ## Docker
 
