@@ -6,7 +6,8 @@ dependencies=( kitchen legacy_recipes )
 
 for dependency in "${dependencies[@]}"
 do
-    fake_dependency_dir=/tmp/fake_"$dependency"_dir_to_mount
+    mkdir $HOME/tmp
+    fake_dependency_dir=$HOME/tmp/fake_"$dependency"_dir_to_mount
     real_dependency_dir=$(cat $DIR/../.devcontainer/"$dependency"_path)
 
     rm -rf $fake_dependency_dir
@@ -19,6 +20,6 @@ do
       dependency_dir=$fake_dependency_dir
     fi
 
-    rm -f /tmp/"$dependency"
-    ln -s $dependency_dir /tmp/"$dependency"
+    rm -f $HOME/tmp/"$dependency"
+    ln -s $dependency_dir /$HOME/tmp/"$dependency"
 done
