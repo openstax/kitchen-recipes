@@ -23,10 +23,11 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   book.chapters.each do |chapter|
     BakeChapterGlossary.v1(chapter: chapter, metadata_source: book.metadata)
     BakeChapterKeyEquations.v1(chapter: chapter, metadata_source: book.metadata)
-    # BakeChapterSummary.v1(chapter: chapter, metadata_source: book.metadata)
+    #BakeChapterKeyConcepts.v1(chapter: chapter, metadata_source: book.metadata)
+    #BakeChapterReviewConceptualQuestions.v1(chapter: chapter, metadata_source: book.metadata)
   end
 
-  # BakeExercises.v1(book: book)
+  BakeExercises.v2(book: book)
   BakeChapterIntroductions.v1(book: book)
   BakeChapterTitle.v1(book: book)
 
@@ -58,9 +59,21 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
         HTML
       )
     end
+
+    chapter.figures.each do |figure|
+      BakeFigure.v1(figure: figure,
+                    number: "#{chapter.count_in(:book)}.#{figure.count_in(:chapter)}")
+    end
   end
 
+  BakeUnnumberedTables.v1(book: book)
+  #BakeNotes.v1(book: book)
+  BakeMathInParagraph.v1(book: book)
+  BakeIndex.v1(book: book)
+  BakeCompositePages.v1(book: book)
+
   BakeToc.v1(book: book)
+  BakeLinkPlaceholders.v1(book: book)
 end
 
 opts = Slop.parse do |slop|
