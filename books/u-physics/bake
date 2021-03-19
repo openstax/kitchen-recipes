@@ -14,11 +14,11 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   include Kitchen::Directions
 
   book = doc.book
-  # puts book.chapters.pages.first.title
 
   book.search('cnx-pi').trash
 
   BakePreface.v1(book: book)
+  BakeUnitTitle.v1(book: book)
 
   book.chapters.each do |chapter|
     BakeChapterGlossary.v1(chapter: chapter, metadata_source: book.metadata)
@@ -27,7 +27,39 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
     #BakeChapterReviewConceptualQuestions.v1(chapter: chapter, metadata_source: book.metadata)
   end
 
-  BakeExercises.v2(book: book)
+  #BakeExercises.v2(book: book)
+  BakeExercises.v1(book: book, class_name: 'section.review-conceptual-questions', bake_eob: false)
+  BakeExercises.v1(book: book, class_name: 'section.review-problems', bake_eob: false)
+  BakeExercises.v1(book: book, class_name: 'section.review-additional-problems', bake_eob: false)
+  BakeExercises.v1(book: book, class_name: 'section.review-challenge', bake_eob: false)
+  BakeExercises.eob(book: book, class_names:
+    {
+      'review_conceptual_questions':
+        {
+          classname: '.review-conceptual-questions',
+          decimal: false,
+          sectional: false
+        },
+      'review_problems':
+        {
+          classname: '.review-problems',
+          decimal: false,
+          sectional: false
+        },
+      'review_additional_problems':
+        {
+          classname: '.review-additional-problems',
+          decimal: false,
+          sectional: false
+        },
+      'review_challenge_problems':
+        {
+          classname: '.review-challenge-problems',
+          decimal: false,
+          sectional: false
+        },
+    })
+
   BakeChapterIntroductions.v1(book: book)
   BakeChapterTitle.v1(book: book)
 
@@ -76,6 +108,23 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   BakeLinkPlaceholders.v1(book: book)
 end
 
+normalize = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
+  include Kitchen::Directions
+
+  book = doc.book
+
+  # remove copy_XXX from places that don't have it
+  book.search('[data-type="solution"]').each do |solution|
+    solution[:id] = solution[:id].gsub(/_copy_(\d+)$/, '')
+  end
+  book.search('.os-solution-container').search('p').each do |p|
+    p[:id] = p[:id].gsub(/_copy_(\d+)$/, '') if p[:id]
+  end
+
+  # remove w3 from toc
+  #book.search('nav#toc').first.search()
+end
+
 opts = Slop.parse do |slop|
   slop.string '--input', 'Assembled XHTML input file', required: true
   slop.string '--output', 'Baked XHTML output file', required: true
@@ -83,6 +132,6 @@ end
 
 puts Kitchen::Oven.bake(
   input_file: opts[:input],
-  recipes: recipe,
+  recipes: [recipe, normalize],
   output_file: opts[:output]
 )
