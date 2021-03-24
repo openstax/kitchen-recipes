@@ -10,6 +10,15 @@ gemfile do
   gem 'byebug'
 end
 
+before = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
+  include Kitchen::Directions
+
+  book = doc.book
+
+  # remove exercises (take out once BakeExercise works)
+  book.search('[data-type="exercise"]').trash
+end
+
 recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   include Kitchen::Directions
 
@@ -23,42 +32,41 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   book.chapters.each do |chapter|
     BakeChapterGlossary.v1(chapter: chapter, metadata_source: book.metadata)
     BakeChapterKeyEquations.v1(chapter: chapter, metadata_source: book.metadata)
-    #BakeChapterKeyConcepts.v1(chapter: chapter, metadata_source: book.metadata)
-    #BakeChapterReviewConceptualQuestions.v1(chapter: chapter, metadata_source: book.metadata)
+    BakeChapterKeyConcepts.v1(chapter: chapter, metadata_source: book.metadata)
   end
 
   #BakeExercises.v2(book: book)
-  BakeExercises.v1(book: book, class_name: 'section.review-conceptual-questions', bake_eob: false)
-  BakeExercises.v1(book: book, class_name: 'section.review-problems', bake_eob: false)
-  BakeExercises.v1(book: book, class_name: 'section.review-additional-problems', bake_eob: false)
-  BakeExercises.v1(book: book, class_name: 'section.review-challenge', bake_eob: false)
-  BakeExercises.eob(book: book, class_names:
-    {
-      'review_conceptual_questions':
-        {
-          classname: '.review-conceptual-questions',
-          decimal: false,
-          sectional: false
-        },
-      'review_problems':
-        {
-          classname: '.review-problems',
-          decimal: false,
-          sectional: false
-        },
-      'review_additional_problems':
-        {
-          classname: '.review-additional-problems',
-          decimal: false,
-          sectional: false
-        },
-      'review_challenge_problems':
-        {
-          classname: '.review-challenge-problems',
-          decimal: false,
-          sectional: false
-        },
-    })
+  # BakeExercises.v1(book: book, class_name: 'section.review-conceptual-questions', bake_eob: false)
+  # BakeExercises.v1(book: book, class_name: 'section.review-problems', bake_eob: false)
+  # BakeExercises.v1(book: book, class_name: 'section.review-additional-problems', bake_eob: false)
+  # BakeExercises.v1(book: book, class_name: 'section.review-challenge', bake_eob: false)
+  # BakeExercises.eob(book: book, class_names:
+  #   {
+  #     'review_conceptual_questions':
+  #       {
+  #         classname: '.review-conceptual-questions',
+  #         decimal: false,
+  #         sectional: false
+  #       },
+  #     'review_problems':
+  #       {
+  #         classname: '.review-problems',
+  #         decimal: false,
+  #         sectional: false
+  #       },
+  #     'review_additional_problems':
+  #       {
+  #         classname: '.review-additional-problems',
+  #         decimal: false,
+  #         sectional: false
+  #       },
+  #     'review_challenge_problems':
+  #       {
+  #         classname: '.review-challenge-problems',
+  #         decimal: false,
+  #         sectional: false
+  #       },
+  #   })
 
   BakeChapterIntroductions.v1(book: book)
   BakeChapterTitle.v1(book: book)
@@ -98,8 +106,13 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
     end
   end
 
+  book.pages('$.appendix').each do |page|
+    appendix_letter = [*('A'..'Z')][page.count_in(:book) - 1]
+    BakeAppendix.v1(page: page, number: appendix_letter)
+  end
+
   BakeUnnumberedTables.v1(book: book)
-  #BakeNotes.v1(book: book)
+  BakeNotes.v1(book: book)
   BakeMathInParagraph.v1(book: book)
   BakeIndex.v1(book: book)
   BakeCompositePages.v1(book: book)
@@ -108,7 +121,7 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   BakeLinkPlaceholders.v1(book: book)
 end
 
-normalize = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
+after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
   include Kitchen::Directions
 
   book = doc.book
@@ -121,8 +134,25 @@ normalize = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
     p[:id] = p[:id].gsub(/_copy_(\d+)$/, '') if p[:id]
   end
 
+  # add copy_XXX to places that need it
+  book.search('.os-key-concepts').search('h3').each do |h3|
+    h3[:id] = "#{h3[:id]}_copy_XXX"
+  end
+
   # remove w3 from toc
-  #book.search('nav#toc').first.search()
+  book.search('nav#toc').first.search('[xmlns="http://www.w3.org/1999/xhtml"]').each do |el|
+    el.remove_attribute('xmlns')
+  end
+
+  # do weird things to captions
+  book.search('.os-caption-container').each do |caption|
+    clip = Kitchen::Clipboard.new
+    title = caption.search('.os-caption').search('[data-type="title"]').first
+    title&.add_class('os-title')
+    title&.cut(to: clip)
+    sibling = caption.search('.os-divider').first
+    sibling.append(sibling: clip.paste)
+  end
 end
 
 opts = Slop.parse do |slop|
@@ -132,6 +162,7 @@ end
 
 puts Kitchen::Oven.bake(
   input_file: opts[:input],
-  recipes: [recipe, normalize],
-  output_file: opts[:output]
+  recipes: [before, recipe, after],
+  output_file: opts[:output],
+  locales: "../../books/u-physics/locales/"
 )
