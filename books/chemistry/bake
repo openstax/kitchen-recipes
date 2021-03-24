@@ -106,5 +106,6 @@ end
 puts Kitchen::Oven.bake(
   input_file: opts[:input],
   recipes: recipe,
-  output_file: opts[:output]
+  output_file: opts[:output],
+  locales: "../../books/chemistry/locales/"
 )
