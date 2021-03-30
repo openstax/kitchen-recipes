@@ -153,6 +153,14 @@ after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
     sibling = caption.search('.os-divider').first
     sibling.append(sibling: clip.paste)
   end
+
+  # bake check-understanding note
+  book.chapters.pages.search('.check-understanding').each do |note|
+    note.search('.os-title').first.remove_attribute('data-type')
+    note.search('.os-title').first.append(child: \
+      "<span class=\"os-number\">#{note.ancestor(:chapter).count_in(:book)}.#{note.count_in(:chapter)}</span>")
+    note.search('.os-title').first.append(child: '<span class="os-divider"> </span>')
+  end
 end
 
 opts = Slop.parse do |slop|
@@ -163,6 +171,5 @@ end
 puts Kitchen::Oven.bake(
   input_file: opts[:input],
   recipes: [before, recipe, after],
-  output_file: opts[:output],
-  locales: "../../books/u-physics/locales/"
+  output_file: opts[:output]
 )
