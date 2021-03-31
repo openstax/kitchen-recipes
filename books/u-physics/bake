@@ -112,7 +112,33 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   end
 
   BakeUnnumberedTables.v1(book: book)
-  BakeNotes.v1(book: book)
+
+  # Bake the notes
+  book.chapters.pages.notes.each do |note|
+    if note.classes.empty?
+      BakeUnclassifiedNote.v1(note: note)
+    elsif (note.classes & %w[media-2 problem-solving]).any?
+      BakeTitledNote.v1(note: note)
+    end
+  end
+  # Numbered notes must be searched for separately to ensure an accurate count
+  book.chapters.pages.notes('.check-understanding').each do |note|
+    BakeNumberedNote.v1(note: note)
+  end
+
+  # bake equations
+  book.chapters.search('[data-type="equation"]', except: ->(eq) { eq.classes.include?('unnumbered') }).each do |eq|
+    #next if eq.classes.include?('unnumbered')
+
+    eq.append(child:
+      <<~HTML
+        <div class="os-equation-number">
+          <span class="os-number">#{eq.ancestor(:chapter).count_in(:book)}.1</span>
+        </div>
+      HTML
+    )
+  end
+
   BakeMathInParagraph.v1(book: book)
   BakeIndex.v1(book: book)
   BakeCompositePages.v1(book: book)
@@ -155,12 +181,12 @@ after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
   end
 
   # bake check-understanding note
-  book.chapters.pages.search('.check-understanding').each do |note|
-    note.search('.os-title').first.remove_attribute('data-type')
-    note.search('.os-title').first.append(child: \
-      "<span class=\"os-number\">#{note.ancestor(:chapter).count_in(:book)}.#{note.count_in(:chapter)}</span>")
-    note.search('.os-title').first.append(child: '<span class="os-divider"> </span>')
-  end
+  # book.chapters.pages.search('.check-understanding').each do |note|
+  #   note.search('.os-title').first.remove_attribute('data-type')
+  #   note.search('.os-title').first.append(child: \
+  #     "<span class=\"os-number\">#{note.ancestor(:chapter).count_in(:book)}.#{note.count_in(:chapter)}</span>")
+  #   note.search('.os-title').first.append(child: '<span class="os-divider"> </span>')
+  # end
 end
 
 opts = Slop.parse do |slop|
