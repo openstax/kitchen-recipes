@@ -35,39 +35,6 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
     BakeChapterKeyConcepts.v1(chapter: chapter, metadata_source: book.metadata)
   end
 
-  #BakeExercises.v2(book: book)
-  # BakeExercises.v1(book: book, class_name: 'section.review-conceptual-questions', bake_eob: false)
-  # BakeExercises.v1(book: book, class_name: 'section.review-problems', bake_eob: false)
-  # BakeExercises.v1(book: book, class_name: 'section.review-additional-problems', bake_eob: false)
-  # BakeExercises.v1(book: book, class_name: 'section.review-challenge', bake_eob: false)
-  # BakeExercises.eob(book: book, class_names:
-  #   {
-  #     'review_conceptual_questions':
-  #       {
-  #         classname: '.review-conceptual-questions',
-  #         decimal: false,
-  #         sectional: false
-  #       },
-  #     'review_problems':
-  #       {
-  #         classname: '.review-problems',
-  #         decimal: false,
-  #         sectional: false
-  #       },
-  #     'review_additional_problems':
-  #       {
-  #         classname: '.review-additional-problems',
-  #         decimal: false,
-  #         sectional: false
-  #       },
-  #     'review_challenge_problems':
-  #       {
-  #         classname: '.review-challenge-problems',
-  #         decimal: false,
-  #         sectional: false
-  #       },
-  #   })
-
   BakeChapterIntroductions.v1(book: book)
   BakeChapterTitle.v1(book: book)
 
@@ -127,17 +94,17 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   end
 
   # bake equations
-  book.chapters.search('[data-type="equation"]', except: ->(eq) { eq.classes.include?('unnumbered') }).each do |eq|
-    #next if eq.classes.include?('unnumbered')
+  # book.chapters.search('[data-type="equation"]', except: ->(eq) { eq.classes.include?('unnumbered') }).each do |eq|
+  #   #next if eq.classes.include?('unnumbered')
 
-    eq.append(child:
-      <<~HTML
-        <div class="os-equation-number">
-          <span class="os-number">#{eq.ancestor(:chapter).count_in(:book)}.1</span>
-        </div>
-      HTML
-    )
-  end
+  #   eq.append(child:
+  #     <<~HTML
+  #       <div class="os-equation-number">
+  #         <span class="os-number">#{eq.ancestor(:chapter).count_in(:book)}.1</span>
+  #       </div>
+  #     HTML
+  #   )
+  # end
 
   BakeMathInParagraph.v1(book: book)
   BakeIndex.v1(book: book)
@@ -179,14 +146,6 @@ after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
     sibling = caption.search('.os-divider').first
     sibling.append(sibling: clip.paste)
   end
-
-  # bake check-understanding note
-  # book.chapters.pages.search('.check-understanding').each do |note|
-  #   note.search('.os-title').first.remove_attribute('data-type')
-  #   note.search('.os-title').first.append(child: \
-  #     "<span class=\"os-number\">#{note.ancestor(:chapter).count_in(:book)}.#{note.count_in(:chapter)}</span>")
-  #   note.search('.os-title').first.append(child: '<span class="os-divider"> </span>')
-  # end
 end
 
 opts = Slop.parse do |slop|
