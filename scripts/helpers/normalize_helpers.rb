@@ -61,6 +61,21 @@ def warn_if_already_seen(id)
   @already_seen_ids.add(id)
 end
 
+# TEMP
+def check_understanding(element)
+  return unless element[:class]&.split(' ')&.include?('check-understanding')
+  return if element.children[0].name == 'div'
+
+  element.children[0].name = 'div'
+end
+
+# def mask_term_numbers(element)
+#   return unless element[:'data-type'] == 'term'
+
+#   #byebug
+#   element[:id] = element[:id]&.gsub(/_term(\d+)$/, '_termXXX')
+# end
+
 # Main normalize function for an XML document
 
 def normalize(doc)
@@ -72,5 +87,7 @@ def normalize(doc)
     remove_blank_classes(child)
     sort_classes_strip_whitespace(child)
     sort_attributes(child)
+    check_understanding(child)
+    #mask_term_numbers(child)
   end
 end
