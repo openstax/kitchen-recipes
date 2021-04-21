@@ -34,6 +34,7 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   book.chapters.each do |chapter|
     BakePageAbstracts.v1(chapter: chapter)
   end
+  BakeUnitTitle.v1(book: book)
 
   solutions_container = BakeBookAnswerKey.v1(book: book)
   BakeIndex.v1(book: book)
@@ -109,12 +110,8 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
     page.metadatas.first.search('[data-type="document-title"]').first.replace_children(with: 'Chapter Review')
   end
 
-  # index = book.search('.os-eob.os-index-container').first.cut
-  # book.body.append(child: index.raw)
-
   BakeCompositePages.v1(book: book)
   BakeCompositeChapters.v1(book: book)
-  BakeUnitTitle.v1(book: book)
   BakeToc.v1(book: book)
   BakeLinkPlaceholders.v1(book: book)
 
@@ -138,20 +135,6 @@ after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
     title&.cut(to: clip)
     sibling = caption.search('.os-divider').first
     sibling.append(sibling: clip.paste)
-  end
-
-  # mask key terms numbering
-  book.search('[data-type="term"]').each do |term|
-    id = term[:id]&.split('_term')
-    #byebug
-    next unless id
-
-    number = id[1].to_i
-    if number >= 165
-      #byebug
-      number += 1
-      term[:id] = "#{id[0]}_term#{number}"
-    end
   end
 end
 
