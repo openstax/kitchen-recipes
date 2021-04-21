@@ -26,20 +26,48 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
 
   book.search('cnx-pi').trash
 
+  # Add wrappers and such
+
   BakePreface.v1(book: book)
-  BakeUnitTitle.v1(book: book)
-
-  book.chapters.each do |chapter|
-    BakeChapterGlossary.v1(chapter: chapter, metadata_source: book.metadata)
-    BakeChapterKeyEquations.v1(chapter: chapter, metadata_source: book.metadata)
-    BakeChapterKeyConcepts.v1(chapter: chapter, metadata_source: book.metadata)
-  end
-
   BakeChapterIntroductions.v1(book: book)
   BakeChapterTitle.v1(book: book)
-
   book.chapters.each do |chapter|
     BakePageAbstracts.v1(chapter: chapter)
+  end
+
+  solutions_container = BakeBookAnswerKey.v1(book: book)
+  BakeIndex.v1(book: book)
+
+  # Bake the notes
+  BakeAutotitledNotes.v1(book: book, classes: %w[media-2 problem-solving])
+  BakeUnclassifiedNotes.v1(book: book)
+  BakeNumberedNotes.v1(book: book, classes: %w[check-understanding])
+
+  # Bake EOC sections
+  book.chapters.each do |chapter|
+    eoc_wrapper = BakeChapterReview.v1(chapter: chapter, metadata_source: book.metadata)
+
+    BakeChapterGlossary.v1(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper)
+    BakeChapterKeyEquations.v1(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper)
+    BakeChapterKeyConcepts.v1(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper)
+    # EoC sections with exercises
+    BakeChapterReviewExercises.v2(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper, klass: 'review-conceptual-questions')
+    BakeChapterReviewExercises.v2(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper, klass: 'review-problems')
+    BakeChapterReviewExercises.v1(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper, klass: 'review-additional-problems')
+    BakeChapterReviewExercises.v1(chapter: chapter, metadata_source: book.metadata, append_to: eoc_wrapper, klass: 'review-challenge')
+    # In-place bake exercises & solutions
+    chapter.search('.review-conceptual-questions, .review-problems, .review-additional-problems, .review-challenge').exercises.each do |exercise|
+      BakeNumberedExercise.v1(exercise: exercise, number: exercise.count_in(:chapter))
+    end
+  end
+
+
+  book.chapters.each do |chapter|
+    BakeChapterAnswerKey.v1(chapter: chapter, metadata_source: book.metadata, strategy: :uphysics, append_to: solutions_container)
+  end
+
+  book.chapters.each do |chapter|
+    #BakePageAbstracts.v1(chapter: chapter)
 
     chapter.tables('$:not(.unnumbered)').each do |table|
       BakeNumberedTable.v1(table: table,
@@ -52,20 +80,7 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
                      title_tag: 'h3')
     end
 
-    chapter.pages('$:not(.introduction)').each do |page|
-      page.search("div[data-type='description']").each(&:trash)
-      page.add_class('chapter-content-module')
-
-      title = page.search("div[data-type='document-title']").first
-      title.name = 'h2'
-      title.replace_children(with:
-        <<~HTML
-          <span class="os-number">#{chapter.count_in(:book)}.#{page.count_in(:chapter)}</span>
-          <span class="os-divider"> </span>
-          <span data-type="" itemprop="" class="os-text">#{title.text}</span>
-        HTML
-      )
-    end
+    BakeNonIntroductionPages.v1(chapter: chapter)
 
     chapter.figures.each do |figure|
       BakeFigure.v1(figure: figure,
@@ -76,61 +91,39 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :uphysics) do |doc|
   book.pages('$.appendix').each do |page|
     appendix_letter = [*('A'..'Z')][page.count_in(:book) - 1]
     BakeAppendix.v1(page: page, number: appendix_letter)
+
+    page.tables('$:not(.unnumbered)').each do |table|
+      BakeNumberedTable.v1(table: table, number: "#{appendix_letter}#{table.count_in(:page)}")
+    end
   end
 
   BakeUnnumberedTables.v1(book: book)
-
-  # Bake the notes
-  book.chapters.pages.notes.each do |note|
-    if note.classes.empty?
-      BakeUnclassifiedNote.v1(note: note)
-    elsif (note.classes & %w[media-2 problem-solving]).any?
-      BakeTitledNote.v1(note: note)
-    end
-  end
-  # Numbered notes must be searched for separately to ensure an accurate count
-  book.chapters.pages.notes('.check-understanding').each do |note|
-    BakeNumberedNote.v1(note: note)
-  end
-
-  # bake equations
-  # book.chapters.search('[data-type="equation"]', except: ->(eq) { eq.classes.include?('unnumbered') }).each do |eq|
-  #   #next if eq.classes.include?('unnumbered')
-
-  #   eq.append(child:
-  #     <<~HTML
-  #       <div class="os-equation-number">
-  #         <span class="os-number">#{eq.ancestor(:chapter).count_in(:book)}.1</span>
-  #       </div>
-  #     HTML
-  #   )
-  # end
-
+  BakeEquations.v1(book: book)
   BakeMathInParagraph.v1(book: book)
-  BakeIndex.v1(book: book)
-  BakeCompositePages.v1(book: book)
 
+  # Fix titles in chapter review composite pages
+  book.chapters('.os-eoc.os-chapter-review-container').composite_pages.each do |page|
+    title = page.search('[data-type="document-title"]').first
+    title[:'data-type'] = 'title'
+    title.name = 'h3'
+    page.metadatas.first.search('[data-type="document-title"]').first.replace_children(with: 'Chapter Review')
+  end
+
+  # index = book.search('.os-eob.os-index-container').first.cut
+  # book.body.append(child: index.raw)
+
+  BakeCompositePages.v1(book: book)
+  BakeCompositeChapters.v1(book: book)
+  BakeUnitTitle.v1(book: book)
   BakeToc.v1(book: book)
   BakeLinkPlaceholders.v1(book: book)
+
 end
 
 after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
   include Kitchen::Directions
 
   book = doc.book
-
-  # remove copy_XXX from places that don't have it
-  book.search('[data-type="solution"]').each do |solution|
-    solution[:id] = solution[:id].gsub(/_copy_(\d+)$/, '')
-  end
-  book.search('.os-solution-container').search('p').each do |p|
-    p[:id] = p[:id].gsub(/_copy_(\d+)$/, '') if p[:id]
-  end
-
-  # add copy_XXX to places that need it
-  book.search('.os-key-concepts').search('h3').each do |h3|
-    h3[:id] = "#{h3[:id]}_copy_XXX"
-  end
 
   # remove w3 from toc
   book.search('nav#toc').first.search('[xmlns="http://www.w3.org/1999/xhtml"]').each do |el|
@@ -146,6 +139,20 @@ after = Kitchen::BookRecipe.new(book_short_name: :u_physics) do |doc|
     sibling = caption.search('.os-divider').first
     sibling.append(sibling: clip.paste)
   end
+
+  # mask key terms numbering
+  book.search('[data-type="term"]').each do |term|
+    id = term[:id]&.split('_term')
+    #byebug
+    next unless id
+
+    number = id[1].to_i
+    if number >= 165
+      #byebug
+      number += 1
+      term[:id] = "#{id[0]}_term#{number}"
+    end
+  end
 end
 
 opts = Slop.parse do |slop|
@@ -155,6 +162,6 @@ end
 
 puts Kitchen::Oven.bake(
   input_file: opts[:input],
-  recipes: [before, recipe, after],
+  recipes: [recipe, after],
   output_file: opts[:output]
 )
