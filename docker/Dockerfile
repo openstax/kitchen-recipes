@@ -25,7 +25,8 @@ RUN apt-get update && \
     gem install byebug --no-document && \
     bundle config set no-cache 'true' && \
     bundle config set silence_root_warning 'true' && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    gem install twitter_cldr
 
 # Install cnx-easybake (if for any reason we end up using more python
 # dependencies this can get pulled out into a requirements.txt)
