@@ -2,9 +2,15 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [ "$1" == "--ci" ]; then SUFFIX=".ci"; else SUFFIX=""; fi
+if [ "$1" == "--ci" ]; then
+  NO_CACHE="--no-cache"
+  SUFFIX=".ci"
+else
+  NO_CACHE=""
+  SUFFIX=""
+fi
 
-docker build -f $DIR/Dockerfile$SUFFIX \
+docker build -f $DIR/Dockerfile$SUFFIX $NO_CACHE \
              -t openstax/recipes$SUFFIX:latest \
              --target runtime-env \
              $DIR/..
