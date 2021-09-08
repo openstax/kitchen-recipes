@@ -5,7 +5,7 @@
 require 'bundler/inline'
 
 gemfile do
-  gem 'openstax_kitchen', ENV['USE_LOCAL_KITCHEN'] ? { path: '/code/kitchen' } : '11.1.0'
+  gem 'openstax_kitchen', ENV['USE_LOCAL_KITCHEN'] ? { path: '/code/kitchen' } : '11.1.0' # To do: update version
   gem 'slop', '4.8.2'
   gem 'byebug'
 end
@@ -48,6 +48,8 @@ recipe = Kitchen::BookRecipe.new(book_short_name: :english_composition) do |doc|
       end
     end
   end
+
+  BakeUnnumberedFigures.v1(book: book) # must be baked before BakeFigure
 
   book.chapters.each do |chapter|
     chapter.pages.each do |page|
