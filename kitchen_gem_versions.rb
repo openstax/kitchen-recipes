@@ -23,7 +23,9 @@ KITCHEN_VERSIONS = {
   dev_math: '18.0.0',
   dummy: '2.0.0',
   economics: '18.0.0',
-  english_composition: '19.0.0',
+  english_composition: {
+    github: 'openstax/kitchen', ref: 'aea896198301cb48c13c3d5791a61a03e8191768'
+  },
   entrepreneurship: '18.0.0',
   finance: '18.0.0',
   history: '18.0.0',
